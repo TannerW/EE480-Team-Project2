@@ -1,0 +1,36 @@
+sy:=0xf:4 0xf:4	0xf:4 0xf:4
+
+ad $.d, $.s, $.t := 0:4 .d:4 .s:4 .t:4
+an $.d, $.s, $.t := 1:4 .d:4 .s:4 .t:4
+or $.d, $.s, $.t := 2:4 .d:4 .s:4 .t:4
+no $.d, $.s := 3:4 .d:4 .s:4 0:4
+eo $.d, $.s, $.t := 4:4 .d:4 .s:4 .t:4
+mi $.d, $.s := 5:4 .d:4 .s:4 0:4
+
+al $.d, $.s, $.t := 6:4 .d:4 .s:4 .t:4
+dl $.d, $.s, $.t := 7:4 .d:4 .s:4 .t:4
+ml $.d, $.s, $.t := 8:4 .d:4 .s:4 .t:4
+sr $.d, $.s, $.t := 9:4 .d:4 .s:4 .t:4
+
+br .c, .lab := 0xa:4 0:1 .c:3 (.lab - (.+1)):8
+jr .c, $.d := 0xb:4 .d:4 0:5 .c:3
+
+li $.d, .imm := 0xc:4 .d:4 .imm:8
+si $.d, .imm := 0xd:4 .d:4 .imm:8
+
+la $.d, .imm ? ((.imm <= 127 ) && (.imm >= -128)) := b:4 .d:4 .imm:8
+la $.d, .imm := 0xb:4 .d:4 (.imm>>8):8 c:4 .d:4 .imm:8
+
+cl $.s, $.t := 0xe:4 0:4 .s:4 .t:4
+co $.s, $.t := 0xe:4 1:4 .s:4 .t:4
+lo $.d, $.s := 0xe:4 .d:4 .s:4 2:4
+nl $.d, $.s := 0xe:4 .d:4 .s:4 3:4
+st $.d, $.s := 0xe:4 .d:4 .s:4 4:4
+
+.const {zero sp fp ra rv u10 u9 u8 u7 u6 u5 u4 u3 u2 u1 u0}
+.const {f lt le eq ne ge gt t}
+
+.segment .text 16 0x10000 0 .VMEM
+.segment .data 16 0x10000 0 .VMEM
+
+.const 0 .lowfirst ; defaults to wrong endian
