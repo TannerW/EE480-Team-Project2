@@ -76,7 +76,8 @@ br eq, skip
 sy
 skip: 
 
-;TEST eo
+;TEST eo should SKIP sy
+;RESULT: TESTED AND PASSED
 .data
 .word 0
 .word 0
@@ -92,7 +93,7 @@ skip:
 .word 0
 .word 131 ;put in u3  10000011
 .word 0
-.word 280 ;put in u1  10110100
+.word 180 ;put in u1  10110100
 .word 55  ;put in u0  00110111
 .text
 eo $u2, $u1, $u0
@@ -102,6 +103,7 @@ sy
 skip: 
 
 ;TEST li
+:RESULT: needs looking at
 .data
 .word 0
 .word 0
@@ -127,6 +129,7 @@ sy
 skip: 
 
 ;TEST li negative
+;RESULT: needs looking at
 .data
 .word 0
 .word 0
@@ -152,6 +155,7 @@ sy
 skip: 
 
 ;TEST mi
+;RESULT: TESTED AND PASSED
 .data
 .word 0
 .word 0
@@ -177,6 +181,7 @@ sy
 skip: 
 
 ;TEST no
+;RESULT: TESTED AND PASSED
 .data
 .word 0
 .word 0
@@ -202,6 +207,7 @@ sy
 skip: 
 
 ;TEST no (non-zero to 0)
+:RESULT: TESTED AND PASSED
 .data
 .word 0
 .word 0
@@ -227,6 +233,7 @@ sy
 skip: 
 
 ;TEST or
+;RESULT: TESTED AND PASSED 
 .data
 .word 0
 .word 0
@@ -272,6 +279,7 @@ skip:
 
 
 ;TEST sr
+;RESULT: TESTED AND PASSED
 .data
 .word 0
 .word 0
