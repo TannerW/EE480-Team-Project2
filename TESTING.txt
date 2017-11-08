@@ -1,4 +1,5 @@
-;TEST ad
+;TEST ad should SKIP sy
+;RESULT: TESTED AND PASSED
 .data
 .word 0
 .word 0
@@ -23,7 +24,34 @@ br eq, skip
 sy
 skip: 
 
-;TEST an
+;TEST ad should HIT sy
+;RESULT: TESTED AND PASSED
+.data
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 9 ;put in u3
+.word 0
+.word 5 ;put in u1
+.word 3 ;put in u0
+.text
+ad $u2, $u1, $u0
+co $u3, $u2
+br eq, skip
+sy
+skip: 
+
+;TEST an should SKIP sy
+;RESULT: TESTED AND PASSED
 .data
 .word 0
 .word 0
