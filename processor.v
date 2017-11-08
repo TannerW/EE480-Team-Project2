@@ -89,7 +89,7 @@ module decode(opout, regdst, opin, ir);
                                 //nl
                                 //4'b0011: opout = `OPnl; //dont need to implement for this assignment
                                 //st
-                                4'b0100: begin opout = `OPst; regdst <= ir `dest; end
+                                4'b0100: begin opout = `OPst; regdst <= 0; end
                                 default: begin opout = `OPnop; regdst <= 0; end //call a system stop because we shouldnt be here
                             endcase
                     endcase
@@ -115,7 +115,7 @@ module ALU(ALUResult, cond, instruct, currentTsrc, currentDst, a, b);
     initial cond = 8'b10000000; //t gt ge ne eq le lt f
 
     
-    always@(instruct, a, b) begin
+    always@(instruct, a, b, currentTsrc, currentDst) begin
         case(instruct)
             `OPad:
                 begin
@@ -123,20 +123,10 @@ module ALU(ALUResult, cond, instruct, currentTsrc, currentDst, a, b);
                 end
             `OPan: ALUResult = a&b;
             `OPeo: ALUResult = a^b;
-            `OPli: ALUResult = a; //pass immediate value through
             `OPmi: ALUResult = (~a)+1; //2's complement??
             `OPno: ALUResult = !a;
             `OPor: ALUResult = a|b;
-            `OPsi: ; //???????????
             `OPsr: ALUResult = a >> b;
-//            `OPbr:
-//                begin
-//                       ALUResult <= b; //address to label
-//                       if(cond[currentDst-7] == 1) //currentDst is the condition register for branch
-//                           brEnable <= 1;
-//                       else
-//                           brEnable <= 0;
-//                    end
             `OPco: 
             begin
                 case(currentDst)
@@ -174,16 +164,15 @@ module ALU(ALUResult, cond, instruct, currentTsrc, currentDst, a, b);
                         end
                     default:
                         case(currentTsrc)
-                        //lo
-                        4'b0010: ;
-                        //nl
-                        4'b0011: ; //dont need to implement for this assignment
-                        //st
-                        4'b0100: ;
+//                        //lo
+//                        4'b0010: ; //just passthrough stage1srcvalue
+//                        //nl
+//                        4'b0011: ; //dont need to implement for this assignment
+                        default: ALUResult = a;
                         endcase
                 endcase
             end
-            default: ;
+            default: ALUResult = a;
         endcase
     end
 
@@ -229,6 +218,11 @@ module processor(halt, reset, clk);
     wire `word sexi;
     assign sexi = { (ir[7] ? 8'b11111111 : 8'b00000000), (ir `I) };
     
+    reg `word sexi_delayed; //used for load immediate
+    always@(posedge clk)
+    begin
+        sexi_delayed <= sexi;
+    end
     
     always@(reset)begin
         halt = 0;
@@ -251,19 +245,19 @@ module processor(halt, reset, clk);
     always@(*) ir = mainmem[pc];
                                         
     //compute srcValue, with value forwarding
-    always @(*) if (stage0op == `OPli) srcValue = sexi; // catch immediate for li
+    always @(*) if (stage0op == `OPli) srcValue = sexi_delayed; // catch immediate for li
                 else srcValue = ( (stage1regdst === 4'bXXXX) ? regfile[stage0src] : (((stage1regdst && (stage0src == stage1regdst)) ? ALUResult :
                                     ( (stage2regdst === 4'bXXXX) ? regfile[stage0src] : (((stage2regdst && (stage0src == stage2regdst)) ? stage2Value :
                                         regfile[stage0src]))))));
                                     
     //compute TsrcValue, with value forwarding
-    always @(*) TsrcValue = ( (stage1regdst === 4'bXXXX) ? regfile[stage0Tsrc] : (((stage1regdst && (stage0Tsrc == stage1regdst) && stage1regdst !== 1'bX) ? ALUResult :
-                                ( (stage2regdst === 4'bXXXX) ? regfile[stage0Tsrc] : (((stage2regdst && (stage0Tsrc == stage2regdst) && stage2regdst !== 1'bX) ? stage2Value :
+    always @(*) TsrcValue = ( (stage1regdst === 4'bXXXX) ? regfile[stage0Tsrc] : (((stage1regdst && (stage0Tsrc == stage1regdst)) ? ALUResult :
+                                ( (stage2regdst === 4'bXXXX) ? regfile[stage0Tsrc] : (((stage2regdst && (stage0Tsrc == stage2regdst)) ? stage2Value :
                                     regfile[stage0Tsrc]))))));
     
     //compute dstval, with value forwarding
-    always @(*) dstValue = ( (stage1regdst === 4'bXXXX) ? regfile[stage0dst] : (((stage1regdst && (stage0dst == stage1regdst) && stage1regdst !== 1'bX) ? ALUResult :
-                               ( (stage2regdst === 4'bXXXX) ? regfile[stage0dst] : (((stage2regdst && (stage0dst == stage2regdst) && stage2regdst !== 1'bX) ? stage2Value :
+    always @(*) dstValue = ( (stage1regdst === 4'bXXXX) ? regfile[stage0dst] : (((stage1regdst && (stage0dst == stage1regdst)) ? ALUResult :
+                               ( (stage2regdst === 4'bXXXX) ? regfile[stage0dst] : (((stage2regdst && (stage0dst == stage2regdst)) ? stage2Value :
                                     regfile[stage0dst]))))));
     
     //new pc
@@ -324,19 +318,22 @@ module processor(halt, reset, clk);
             //load stage 2's information buffer
             stage2op <= stage1op;
             stage2regdst <= stage1regdst;
-            stage2Value <= ( (stage1op == `OPsi) ? ( (stage1dstValue << 8)|(stage1srcValue&8'b11111111)) : ((stage1op == `OPli) ? sexi : ((stage1op == `OPlo && stage1dst != 0 && stage1dst != 1 && stage1Tsrc == 2) ? mainmem[stage1srcValue] : ALUResult)));
+            stage2Tsrc <= stage1Tsrc;
+            stage2src <= stage1src;
+            stage2dst <= stage1dst;
+            stage2Value <= ( (stage1op == `OPsi) ? ( (stage1dstValue << 8)|({stage1src,stage1Tsrc}&8'b11111111)) : ((stage1op == `OPli) ? stage1srcValue : ((stage1op == `OPlo && stage1dst != 0 && stage1dst != 1 && stage1Tsrc == 2) ? mainmem[stage1srcValue] : ALUResult)));
             if (stage1op == `OPst && stage1dst != 0 && stage1dst != 1 && stage1Tsrc == 4) mainmem[stage1srcValue] <= stage1dstValue;
             if (stage1op == `OPsy) halt <= 1;
         end
     end
     
+    reg `word previousstage2Value;
     //reg write
     always@(posedge clk)
     begin
         if(!halt)
         begin
-            if (stage2regdst != 0)
-                regfile[stage2regdst] <= stage2Value;
+                if (stage2regdst !=0) regfile[stage2regdst] <= stage2Value;
         end
     end
 endmodule
